@@ -3,9 +3,6 @@ blueprint:
   description: "Ajusta volume via media_player, anuncia usando a ação nativa e retorna."
   domain: script
 
-mode: queued
-icon: mdi:bullhorn
-
 fields:
   mensagem:
     name: "Mensagem"
@@ -41,7 +38,7 @@ fields:
         step: 1
 
 sequence:
-  # 1. Ajusta o volume usando o media_player selecionado (ex: 5 vira 0.5)
+  # 1. Ajusta o volume usando o media_player selecionado
   - action: media_player.volume_set
     target:
       entity_id: "{{ onde_anunciar }}"
@@ -52,7 +49,7 @@ sequence:
   - delay:
       seconds: 2
 
-  # 3. Mágica do Template: Pega o "media_player.echo_dot..." e transforma em "notify.alexa_media_echo_dot..."
+  # 3. Mágica do Template: Aciona a notificação com base no nome do media_player
   - action: "notify.alexa_media_{{ onde_anunciar | replace('media_player.', '') }}"
     data:
       message: "{{ mensagem }}"
