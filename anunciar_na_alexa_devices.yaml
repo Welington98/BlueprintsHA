@@ -1,6 +1,6 @@
 blueprint:
-  name: "Anunciar via Alexa Devices"
-  description: "Anuncia via entidade notify (announce ou speak), ajusta volume antes e retorna para 3 depois."
+  name: "Anunciar via Alexa Devices (Corrigido)"
+  description: "Anuncia via entidade notify, ajusta volume e retorna para 3."
   domain: script
 mode: queued
 icon: mdi:bullhorn
@@ -14,13 +14,13 @@ fields:
 
   onde_anunciar:
     name: "Onde anunciar?"
+    description: "Selecione a entidade de notificação (ex: notify.alexa_media_echo_dot)"
     required: true
     selector:
       entity:
         multiple: false
         filter:
           - domain: notify
-            integration: alexa_devices
 
   volume:
     name: "Volume:"
@@ -33,28 +33,30 @@ fields:
         step: 1
 
 sequence:
-  - variables:
-      selected_entity: "{{ onde_anunciar }}"
-      alexa_device_id: "{{ device_id(selected_entity) }}"
-
-  - action: alexa_devices.send_text_command
+  # 1. Ajustar o Volume
+  # Usamos a própria entidade de notify para extrair o nome do serviço
+  - action: "{{ onde_anunciar }}"
     data:
-      device_id: "{{ alexa_device_id }}"
-      text_command: "volume {{ volume | int }}"
+      message: "volume {{ volume | int }}"
+      data:
+        type: "tts"
+        method: "all"
 
   - delay:
-      seconds: 2
+      seconds: 1
 
-  - action: notify.send_message
+  # 2. Enviar a Mensagem
+  - action: "{{ onde_anunciar }}"
     data:
       message: "{{ mensagem }}"
-    target:
-      entity_id: "{{ selected_entity }}"
 
   - delay:
-      seconds: 8
+      seconds: 5
 
-  - action: alexa_devices.send_text_command
+  # 3. Retornar Volume para 3
+  - action: "{{ onde_anunciar }}"
     data:
-      device_id: "{{ alexa_device_id }}"
-      text_command: "volume 3"
+      message: "volume 3"
+      data:
+        type: "tts"
+        method: "all"
