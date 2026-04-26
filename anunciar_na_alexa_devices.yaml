@@ -1,6 +1,6 @@
 blueprint:
-  name: "Anunciar via Alexa (Fix)"
-  description: "Ajusta volume e anuncia."
+  name: "Anunciar via Alexa (Definitivo)"
+  description: "Ajusta volume nativo no media_player, anuncia e retorna ao original."
   domain: script
 mode: queued
 
@@ -12,14 +12,14 @@ fields:
       text:
   onde_anunciar:
     name: "Selecione a Alexa"
-    description: "Escolha a entidade notify (ex: notify.alexa_media_sala)"
+    description: "⚠️ Escolha a entidade MEDIA PLAYER (ex: media_player.echo_dot_de_welington)"
     required: true
     selector:
       entity:
         filter:
-          - domain: notify
+          - domain: media_player
   volume:
-    name: "Volume"
+    name: "Volume (0 a 10)"
     default: 7
     selector:
       number:
@@ -27,23 +27,30 @@ fields:
         max: 10
 
 sequence:
-  # 1. Ajustar Volume via comando de texto
-  - action: "{{ onde_anunciar }}"
+  # 1. Ajusta o volume usando o controle nativo (HA usa 0.0 a 1.0, então dividimos por 10)
+  - action: media_player.volume_set
+    target:
+      entity_id: "{{ onde_anunciar }}"
     data:
-      message: "volume {{ volume | int }}"
+      volume_level: "{{ volume | float / 10 }}"
 
   - delay:
       seconds: 1
 
-  # 2. Falar a mensagem
-  - action: "{{ onde_anunciar }}"
+  # 2. Faz o anúncio usando o serviço central da integração
+  - action: notify.alexa_media
     data:
+      target: "{{ onde_anunciar }}"
       message: "{{ mensagem }}"
+      data:
+        type: announce
 
   - delay:
       seconds: 5
 
-  # 3. Retornar Volume para 3
-  - action: "{{ onde_anunciar }}"
+  # 3. Retorna o volume para o nível 3 (0.3 no sistema nativo)
+  - action: media_player.volume_set
+    target:
+      entity_id: "{{ onde_anunciar }}"
     data:
-      message: "volume 3"
+      volume_level: 0.3
