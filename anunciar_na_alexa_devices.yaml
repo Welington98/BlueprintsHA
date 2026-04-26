@@ -1,9 +1,9 @@
 blueprint:
-  name: "Anunciar via Alexa Devices"
-  description: "Anuncia via entidade notify (announce ou speak), ajusta volume antes e retorna para 3 depois."
+  name: "Anunciar via Alexa (Baseado no Teste)"
+  description: "Ajusta volume via media_player, anuncia usando a ação nativa e retorna."
   domain: script
-mode: queued
-icon: mdi:bullhorn
+  mode: queued
+  icon: mdi:bullhorn
 
 fields:
   mensagem:
@@ -13,18 +13,25 @@ fields:
       text:
 
   onde_anunciar:
-    name: "Onde anunciar?"
+    name: "Selecione a Alexa"
+    description: "Escolha a entidade MEDIA PLAYER (ex: media_player.echo_dot_de_welington)"
     required: true
     selector:
       entity:
-        multiple: false
         filter:
-          - domain: notify
-            integration: alexa_devices
+          - domain: media_player
 
-  volume:
-    name: "Volume:"
-    required: true
+  volume_anuncio:
+    name: "Volume para Falar (0 a 10)"
+    default: 5
+    selector:
+      number:
+        min: 0
+        max: 10
+        step: 1
+
+  volume_retorno:
+    name: "Volume de Retorno (0 a 10)"
     default: 7
     selector:
       number:
@@ -33,28 +40,29 @@ fields:
         step: 1
 
 sequence:
-  - variables:
-      selected_entity: "{{ onde_anunciar }}"
-      alexa_device_id: "{{ device_id(selected_entity) }}"
-
-  - action: alexa_devices.send_text_command
+  # 1. Ajusta o volume usando o media_player selecionado (ex: 5 vira 0.5)
+  - action: media_player.volume_set
+    target:
+      entity_id: "{{ onde_anunciar }}"
     data:
-      device_id: "{{ alexa_device_id }}"
-      text_command: "volume {{ volume | int }}"
+      volume_level: "{{ volume_anuncio | float / 10 }}"
 
+  # 2. Delay para a Alexa registrar o volume
   - delay:
       seconds: 2
 
-  - action: notify.send_message
+  # 3. Mágica do Template: Pega o "media_player.echo_dot..." e transforma em "notify.alexa_media_echo_dot..."
+  - action: "notify.alexa_media_{{ onde_anunciar | replace('media_player.', '') }}"
     data:
       message: "{{ mensagem }}"
-    target:
-      entity_id: "{{ selected_entity }}"
 
+  # 4. Delay da mensagem (mantive 6 segundos como no seu teste)
   - delay:
-      seconds: 8
+      seconds: 6
 
-  - action: alexa_devices.send_text_command
+  # 5. Retorna o volume original
+  - action: media_player.volume_set
+    target:
+      entity_id: "{{ onde_anunciar }}"
     data:
-      device_id: "{{ alexa_device_id }}"
-      text_command: "volume 3"
+      volume_level: "{{ volume_retorno | float / 10 }}"
