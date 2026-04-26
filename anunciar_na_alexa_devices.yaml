@@ -1,8 +1,9 @@
 blueprint:
-  name: "Anunciar via Alexa (Definitivo)"
-  description: "Ajusta volume nativo no media_player, anuncia e retorna ao original."
+  name: "Anunciar via Alexa (Baseado no Teste)"
+  description: "Ajusta volume via media_player, anuncia usando a ação nativa e retorna."
   domain: script
-mode: queued
+  mode: queued
+  icon: mdi:bullhorn
 
 fields:
   mensagem:
@@ -10,47 +11,58 @@ fields:
     required: true
     selector:
       text:
+
   onde_anunciar:
     name: "Selecione a Alexa"
-    description: "⚠️ Escolha a entidade MEDIA PLAYER (ex: media_player.echo_dot_de_welington)"
+    description: "Escolha a entidade MEDIA PLAYER (ex: media_player.echo_dot_de_welington)"
     required: true
     selector:
       entity:
         filter:
           - domain: media_player
-  volume:
-    name: "Volume (0 a 10)"
+
+  volume_anuncio:
+    name: "Volume para Falar (0 a 10)"
+    default: 5
+    selector:
+      number:
+        min: 0
+        max: 10
+        step: 1
+
+  volume_retorno:
+    name: "Volume de Retorno (0 a 10)"
     default: 7
     selector:
       number:
         min: 0
         max: 10
+        step: 1
 
 sequence:
-  # 1. Ajusta o volume usando o controle nativo (HA usa 0.0 a 1.0, então dividimos por 10)
+  # 1. Ajusta o volume usando o media_player selecionado (ex: 5 vira 0.5)
   - action: media_player.volume_set
     target:
       entity_id: "{{ onde_anunciar }}"
     data:
-      volume_level: "{{ volume | float / 10 }}"
+      volume_level: "{{ volume_anuncio | float / 10 }}"
 
+  # 2. Delay para a Alexa registrar o volume
   - delay:
-      seconds: 1
+      seconds: 2
 
-  # 2. Faz o anúncio usando o serviço central da integração
-  - action: notify.alexa_media
+  # 3. Mágica do Template: Pega o "media_player.echo_dot..." e transforma em "notify.alexa_media_echo_dot..."
+  - action: "notify.alexa_media_{{ onde_anunciar | replace('media_player.', '') }}"
     data:
-      target: "{{ onde_anunciar }}"
       message: "{{ mensagem }}"
-      data:
-        type: announce
 
+  # 4. Delay da mensagem (mantive 6 segundos como no seu teste)
   - delay:
-      seconds: 5
+      seconds: 6
 
-  # 3. Retorna o volume para o nível 3 (0.3 no sistema nativo)
+  # 5. Retorna o volume original
   - action: media_player.volume_set
     target:
       entity_id: "{{ onde_anunciar }}"
     data:
-      volume_level: 0.3
+      volume_level: "{{ volume_retorno | float / 10 }}"
