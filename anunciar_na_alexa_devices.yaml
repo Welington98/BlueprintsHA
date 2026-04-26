@@ -2,8 +2,9 @@ blueprint:
   name: "Anunciar via Alexa (Baseado no Teste)"
   description: "Ajusta volume via media_player, anuncia usando a ação nativa e retorna."
   domain: script
-  mode: queued
-  icon: mdi:bullhorn
+
+mode: queued
+icon: mdi:bullhorn
 
 fields:
   mensagem:
@@ -56,7 +57,7 @@ sequence:
     data:
       message: "{{ mensagem }}"
 
-  # 4. Delay da mensagem (mantive 6 segundos como no seu teste)
+  # 4. Delay da mensagem
   - delay:
       seconds: 6
 
